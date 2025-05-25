@@ -1,0 +1,20 @@
+flowchart TD
+    subgraph hsn_agent
+        direction TB
+        A[User Query] --> B[Embeddings]
+        B --> C[Similarity Search]
+        C --> D[Retrieve n neighbours]
+        D --> E[LLM]
+        E --> F[Generate Response]
+    end
+    subgraph data ingestion
+        xlx[Excel] --> json[Hierarchical JSON]
+        json --> vector[Vector Chunks]
+        vector --> embeddings[Embeddings]
+        embeddings --> ChromaDB[(ChromaDB)]
+    end
+
+    B <--> ChromaDB
+    ChromaDB --> D
+
+
