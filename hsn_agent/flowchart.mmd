@@ -1,0 +1,31 @@
+flowchart TD
+    Start([Start]) --> Load[Load Excel File]
+    Load --> NormalizeHeaders[Normalize Headers]
+    NormalizeHeaders --> RenameCols[Rename Columns: snake_case]
+
+    RenameCols --> NormalizeDisplay[Normalize & Prepare Display]
+    subgraph Normalize & Prepare Display
+        ND1[Strip Whitespace from Strings]
+        ND2[Parse Duty Values]
+        ND3[Create value, unit, display Columns]
+        ND1 --> ND2 --> ND3
+    end
+    
+    NormalizeDisplay --> AttachPolicies[Attach Policy Links]
+    subgraph Attach Policy Links
+        AP1[Extract import_policy links]
+        AP2[Extract export_policy links]
+        AP1 --> AP2
+    end
+    
+    AttachPolicies --> ComputeLevels[Compute Hierarchy Levels]
+    subgraph Compute Hierarchy Levels
+        CL1[Preserve raw_level]
+        CL2[Seed levels from hyphens & chapters]
+        CL3[Override Tariff rows : 4-digit, hyphens+1, fallback]
+        CL1 --> CL2 --> CL3
+    end
+    
+    ComputeLevels --> DropCols[Drop Raw Duty & Policy Columns]
+    DropCols --> WriteOutput[Write Cleaned Excel to Disk]
+    WriteOutput --> End([End])
