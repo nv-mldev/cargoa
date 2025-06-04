@@ -1,0 +1,59 @@
+flowchart TD
+  %% Ingestion Layer (Now includes "Sent To" or "CC")
+  subgraph Ingestion
+    direction LR
+    Customer((Customer)) 
+    Recipient["Primary Recipient"] 
+    Inbox["hello@cargoa"]
+    
+    %% Two ways into the inbox:
+    Customer -->|Forwards Email| Inbox
+    Customer -->|Sends Email To CC “hello@cargoa” | Inbox
+
+    Recipient -->|Replies/Forwards + CC “hello@cargoa”| Inbox
+
+    %% In practice, Graph will fetch any message where hello@cargoa.io is in To or CC
+    Inbox -->|New Email Event| Listener[Inbox Listener]
+  end
+
+  %% Processing & Storage Layer
+  subgraph Processing_and_Storage
+    direction TB
+    Listener --> FetchFull[Fetch Full Message via Graph]
+    FetchFull --> Parser[Email Parser]
+    Parser -->|Extract Headers, Body, To, CC| Metadata[Capture Metadata:<br/>• conversationId<br/>• inReplyTo<br/>• to/cc lists<br/>• receivedDateTime]
+    Parser -->|Extract Plaintext Body| BodyText[Body Text]
+    Parser -->|Save Attachments| Attachments[Attachment Storage]
+    Metadata --> StoreMsg[Store Message in DB]
+    StoreMsg --> DetectCC[Detect CC/To Changes]
+    Attachments --> DocExtractor[Document Extraction Agent]
+    DocExtractor --> ExtractedText[Extracted Attachment Text]
+  end
+
+  %% Thread Aggregation & Summarization
+  subgraph Threading_and_Summarization
+    direction TB
+    StoreMsg --> BuildCorpus[Build Thread Corpus]
+    BuildCorpus -->|Strip Quoted Text & Concatenate| ThreadCorpus[Thread Corpus Text]
+    ExtractedText --> ThreadCorpus
+    ThreadCorpus --> Splitter[Text Splitter<br/>if context window]
+    Splitter --> Embedding[Embedding Model:<br/>stella-en-1.5B-v5]
+    Embedding --> VectorStore[FAISS Vector Store]
+    VectorStore --> Retriever[Retriever k=3]
+    Retriever --> Summarizer[LLama 2 7B LLM]
+    Summarizer --> Summary[Generated Thread Summary]
+  end
+
+  %% Post‐Processing & Frontend
+  subgraph Frontend_and_Downstream
+    direction TB
+    Summary --> WebUI[Push to Web Dashboard]
+    WebUI -->|User Reviews & Confirms| Confirmation[User Confirmation]
+    Confirmation --> Downstream[Trigger Downstream Tasks]
+    FetchFull --> MarkRead[Mark Email As Read]
+  end
+
+  %% Legend/Notes
+  classDef note fill:#f9f,stroke:#333,stroke-width:1px;
+  Note[Note: “DetectCC” compares the stored To/CC lists for this conversation versus the previous message, so we can annotate when someone is newly added/removed.]:::note
+  DetectCC -.-> Note

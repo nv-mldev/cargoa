@@ -1,0 +1,4 @@
+azure-identity
+msgraph-core
+dotenv 
+msgraph-sdk
